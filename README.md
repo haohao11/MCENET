@@ -8,7 +8,7 @@ Install required packages, see requirements.txt
 
 generate data
 ```python
-python dparser.de
+python dparser.py
 ```
 
 Train the model
@@ -16,6 +16,18 @@ There are two ways to train the model:
 ```python
 python ccvae_mixed.py
 ```
+
+## Download preprocessed data and pretrained model
+Download preprocessed data
+
+Download pretrained model
+
+Run the pretrained model
+There are two ways to train the model:
+```python
+python ccvae_mixed.py --train_mode False
+```
+
 
 ## Citation
 ```
