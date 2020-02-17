@@ -23,8 +23,7 @@ Download preprocessed data
 
 [Download pretrained model](https://www.dropbox.com/sh/lycwhurioqebfqb/AADMAoxUqEBjNuZpIImjaicIa?dl=0)
 
-Run the pretrained model
-There are two ways to train the model:
+Put the preprocessed data into the required folder and run the pretrained model
 ```python
 python ccvae_mixed.py --train_mode False
 ```
@@ -54,5 +53,5 @@ If you use HC dataset, please cite
 }
 ```
 
-MIT license
+[MIT license](https://github.com/haohao11/CCVAE/blob/master/license.md)
 
