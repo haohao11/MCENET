@@ -54,5 +54,5 @@ If you use HC dataset, please cite
 }
 ```
 
-MIT license
+[MIT license](https://github.com/haohao11/CCVAE/blob/master/license.md)
 
