@@ -41,3 +41,16 @@ python ccvae_mixed.py --train_mode False
 }
 ```
 
+If you use HC dataset, please cite
+```
+@inproceedings{cheng2019pedestrian,
+  title={Pedestrian Group Detection in Shared Space},
+  author={Cheng, Hao and Li, Yao and Sester, Monika},
+  booktitle={2019 IEEE Intelligent Vehicles Symposium (IV)},
+  pages={1707--1714},
+  year={2019},
+  organization={IEEE}
+}
+```
+
+
