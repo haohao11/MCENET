@@ -14,7 +14,6 @@ python dparser.py
 ```
 
 Train the model
-There are two ways to train the model:
 ```python
 python ccvae_mixed.py
 ```
