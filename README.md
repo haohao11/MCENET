@@ -6,7 +6,7 @@ Trajectory prediction in urban mixed-traffic zones is critical for many AI syste
 
 
 ## Code usage
-Install required packages, see requirements.txt
+Install required packages, see [requirements.txt](https://github.com/haohao11/CCVAE/blob/master/requirements.txt)
 
 generate data
 ```python
