@@ -34,7 +34,7 @@ python ccvae_mixed.py --train_mode False
 ```
 @misc{cheng2020context,
     title={Context Conditional Variational Autoencoder for Predicting Multi-Path Trajectories in Mixed Traffic},
-    author={Hao Cheng and Wentong Liao. Michael Ying Yang and Monica Sester and Bodo Rosenhahn},
+    author={Hao Cheng and Wentong Liao and Michael Ying Yang and Monika Sester and Bodo Rosenhahn},
     year={2020},
     eprint={2002.05966},
     archivePrefix={arXiv},
