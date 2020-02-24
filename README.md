@@ -21,13 +21,6 @@ python ccvae_mixed.py
 ## Download preprocessed data and pretrained model
 [Download preprocessed data](https://www.dropbox.com/sh/minfdvk167912pq/AAC-8O38SJSEz4R6UE8xtGNKa?dl=0)
 
-[Download pretrained model](https://www.dropbox.com/sh/lycwhurioqebfqb/AADMAoxUqEBjNuZpIImjaicIa?dl=0)
-
-
-Put the preprocessed data into the required folder and run the pretrained model
-```python
-python ccvae_mixed.py --train_mode False
-```
 
 
 ## Citation
