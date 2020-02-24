@@ -69,15 +69,15 @@ def parse_args(data_name):
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--h_drop', type=float, default=0.7, help='The dropout rate for heatmap grid')
     parser.add_argument('--o_drop', type=float, default=0.3, help='The dropout rate for occupancy grid')
-    parser.add_argument('--s_drop', type=float, default=0.0, help='The dropout rate for trajectory sequence')
-    parser.add_argument('--c_drop', type=float, default=0.2, help='The dropout rate for concatenated input')
-    parser.add_argument('--dropout', type=float, default=0.2, help='Dropout rate for prediction')
+    parser.add_argument('--s_drop', type=float, default=0.1, help='The dropout rate for trajectory sequence')
+    parser.add_argument('--c_drop', type=float, default=0.1, help='The dropout rate for concatenated input')
+    parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate for prediction')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('--decay', type=float, default=0, help='Decay rate')
     parser.add_argument('--epochs', type=int, default=2000, help='Number of batches')
     parser.add_argument('--beta', type=float, default=0.99, help='Loss weight')
     parser.add_argument('--resi_scale', type=float, default=50.0, help='The displacement scale')
- 
+    
                         
     args = parser.parse_args(sys.argv[1:])
     return args

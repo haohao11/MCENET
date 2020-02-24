@@ -24,7 +24,7 @@ from keras import optimizers
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.losses import mse
 
-from keras.applications.resnet50 import ResNet50
+#from keras.applications.resnet50 import ResNet50
 #from keras.preprocessing import image
 #from keras.applications.resnet50 import preprocess_input, decode_predictions
 from keras.applications.mobilenet_v2 import MobileNetV2
@@ -256,8 +256,8 @@ def main():
     # Construct the heatmap/scene inputs for the model
     # Please note that during training and validation, in order to calculate latent z, y (ground truth prediction) is visiable
     # y (ground truth prediction) is not available in testing
-    val_obs_hpinput = resnet(val_obs_hmaps, obs_seq)
-    val_pred_hpinput = resnet(val_pred_hmaps, pred_seq) 
+    val_obs_hpinput = mobilenet(val_obs_hmaps, obs_seq)
+    val_pred_hpinput = mobilenet(val_pred_hmaps, pred_seq) 
     
     print('\nLoad the test data ...')  
 # =============================================================================
@@ -296,7 +296,7 @@ def main():
     # Construct the heatmap/scene inputs for the model
     # Please note that during training and validation, in order to calculate latent z, y (ground truth prediction) is visiable
     # y (ground truth prediction) is not available in testing
-    test_obs_hpinput = resnet(test_obs_hmaps, obs_seq)
+    test_obs_hpinput = mobilenet(test_obs_hmaps, obs_seq)
     
     
     
@@ -331,12 +331,8 @@ def main():
         # Construct the heatmap/scene inputs for the model
         # Please note that during training and validation, in order to calculate latent z, y (ground truth prediction) is visiable
         # y (ground truth prediction) is not available in testing
-# =============================================================================
-#         train_obs_hpinput = parse_hmap(train_obs_hmaps, hmap_model, obs_seq)
-#         train_pred_hpinput = parse_hmap(train_pred_hmaps, hmap_model, pred_seq)
-# =============================================================================
-        train_obs_hpinput = resnet(train_obs_hmaps, obs_seq)
-        train_pred_hpinput = resnet(train_pred_hmaps, pred_seq)
+        train_obs_hpinput = mobilenet(train_obs_hmaps, obs_seq)
+        train_pred_hpinput = mobilenet(train_pred_hmaps, pred_seq)
         
         
         print('Start training the CVAE model...')
@@ -471,7 +467,7 @@ def main():
             f.writelines('\n')    
 
 
-def resnet(hmaps, seq):
+def mobilenet(hmaps, seq):
     '''
     This is function to use ResNet50
     '''

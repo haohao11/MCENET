@@ -69,8 +69,7 @@ def heatmap_main(data , dimensions, diagonal, dataname, user_type=1, sigma=16):
     plt.gcf().clear()
     plt.close()
 
-    np.save("../scene/heatmap/%s_%s.npy"%(dataname, str(type_dic[user_type])), aligned_img)
-#    return(aligned_img)
+    return(aligned_img)
         
      
 def filter_type(data, user_type):
