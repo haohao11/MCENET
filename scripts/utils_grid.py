@@ -11,7 +11,7 @@ import cv2
 
 from occupancy import circle_group_model_input
 from heatmap import heatmap_main
-from attention import ind_heatmap, rgb_image, ind_image
+from localscene import ind_heatmap, rgb_image, ind_image
 
 
 def save_function(data, frame_num, info_col, name):
@@ -192,9 +192,9 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
         else:
             all_data = np.reshape(train_data, [-1, 5])
         print('shape for all_data', all_data.shape)
-        hmap_ped = heatmap_main(all_data.T, args.dimentions, scale, dataname, user_type=1, sigma=args.sigma)
-        hmap_cyc = heatmap_main(all_data.T, args.dimentions, scale, dataname, user_type=2, sigma=args.sigma)
-        hmap_veh = heatmap_main(all_data.T, args.dimentions, scale, dataname, user_type=3, sigma=args.sigma)
+        hmap_ped = heatmap_main(all_data.T, args.dimensions, scale, dataname, user_type=1, sigma=args.sigma)
+        hmap_cyc = heatmap_main(all_data.T, args.dimensions, scale, dataname, user_type=2, sigma=args.sigma)
+        hmap_veh = heatmap_main(all_data.T, args.dimensions, scale, dataname, user_type=3, sigma=args.sigma)
         heatmaps = [hmap_ped, hmap_cyc, hmap_veh]
         ## Compute the heatmap grid for training data
         train_obs_hmap = ind_heatmap(train_obs, heatmaps, scale, hgrid_size=args.hgrid_size)

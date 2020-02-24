@@ -10,16 +10,13 @@ The actual time steps has one step less than the observed time steps due to the 
 @author: cheng
 """
 
-import sys
-import argparse
 from contextlib import redirect_stdout
 import numpy as np
 import os
 
 from keras.layers import Input, Dense, Lambda, concatenate, LSTM, Activation 
-from keras.layers import MaxPooling2D, BatchNormalization, Flatten
-from keras.layers.convolutional import Conv2D, Conv1D
-from keras.models import Sequential, Model
+from keras.layers.convolutional import Conv1D
+from keras.models import Model
 from keras import backend as K
 from keras.layers.core import RepeatVector, Dropout
 from keras.layers.wrappers import TimeDistributed
@@ -27,10 +24,17 @@ from keras import optimizers
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.losses import mse
 
+from keras.applications.resnet50 import ResNet50
+#from keras.preprocessing import image
+#from keras.applications.resnet50 import preprocess_input, decode_predictions
+from keras.applications.mobilenet_v2 import MobileNetV2
+
+
 import time
 from plots import plot_loss, plot_scenarios
 from evaluation import get_classified_errors
-from dparser import get_data_repo, parse_args
+from dparser import get_data_repo, generate_data
+from hyperparameters import parse_args
 
 from scipy.stats import multivariate_normal
     
@@ -44,39 +48,13 @@ def main():
     
     '''
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    datanames = ['HBS', 'HC', 'SDDgates3']
-    
-    
-    parser = argparse.ArgumentParser(description = 'Predict the trajectories on the inout dataset')
-    parser.add_argument('--data_name', type=str, choices=datanames, default='HC', help='specify the input data name')
-    parser.add_argument('--train_mode', type=bool, default=True, help='This is the training mode')
-    parser.add_argument('--o_dim', type=int, default=512, help='The dimension of the CNN output')
-    parser.add_argument('--n_hidden', type=int, default=512, help='This is the hidden size of the cvae') 
-    parser.add_argument('--z_dim', type=int, default=16, help='This is the size of the latent variable')
-    parser.add_argument('--encoder_dim', type=int, default=16, help='This is the size of the encoder output dimension')
-    parser.add_argument('--z_decoder_dim', type=int, default=128, help='This is the size of the decoder LSTM dimension')
-    parser.add_argument('--hidden_size', type=int, default=32, help='The size of GRU hidden state')
-    parser.add_argument('--conv1d_size', type=int, default=8, help='The filters for the Conv1D')
-    parser.add_argument('--batch_size', type=int, default=700, help='Batch size')
-    parser.add_argument('--h_drop', type=float, default=0.7, help='The dropout rate for heatmap grid')
-    parser.add_argument('--o_drop', type=float, default=0.3, help='The dropout rate for occupancy grid')
-    parser.add_argument('--s_drop', type=float, default=0.0, help='The dropout rate for trajectory sequence')
-    parser.add_argument('--c_drop', type=float, default=0.2, help='The dropout rate for concatenated input')
-    parser.add_argument('--dropout', type=float, default=0.2, help='Dropout rate for prediction')
-    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--decay', type=float, default=0, help='Decay rate')
-    parser.add_argument('--epochs', type=int, default=10000, help='Number of batches')
-    parser.add_argument('--beta', type=float, default=0.99, help='Loss weight')
-    parser.add_argument('--resi_scale', type=float, default=50.0, help='The displacement scale')
-    
-    data_args = parser.parse_args(sys.argv[1:])
-    dataname = data_args.data_name
+    dataname = 'HC'
     print(dataname)
-    
-    
+    # Make all the necessary folders
+    mak_dir()
+    bg_image, data_dir, dirs, filename = get_data_repo(dataname)
+   
     # Get the hyperparameters
-    # This part of hyperparameters should be consistent with them in dparser.py
-    # That is why the data_args dose not contain them and can not overwrite them
     args = parse_args(dataname)   
     num_pred = args.num_pred
     obs_seq = args.obs_seq - 1 ### minus one is for residual
@@ -84,14 +62,9 @@ def main():
     neighSize = args.neighSize
     gridRadius = args.gridRadius
     gridAngle = args.gridAngle
-    hmap_dim = args.hmap_dim
-    
-    # This part of hyperparameters are used for the CVAE model
-    # They can be overwrite by the data_args
     train_mode = args.train_mode
 #    retrain_mode = args.retrain_mode
     sceneType = args.sceneType
-    o_dim = args.o_dim
     n_hidden = args.n_hidden
     z_dim = args.z_dim
     encoder_dim = args.encoder_dim
@@ -109,23 +82,18 @@ def main():
     beta = args.beta
     resi_scale = args.resi_scale
     
-    # Make all the necessary folders
-    mak_dir()
-    bg_image, data_dir, dirs, filename = get_data_repo(dataname)
+        
+    # Generate data
+    if args.data_process == True:
+        generate_data(dataname, leaveoneout=args.leaveoneout)
     
          
     #################### MODEL CONSTRUCTION STARTS FROM HERE ####################
-    # HERE IS THE SHARED LAYER
-    # Define the heatmap parsing using CNN
-    # Shared the weight for each user at each step
-    hmap_model = CNN(hmap_dim[0], hmap_dim[1], 3, o_dim)
-    
+    # Define the ResNet for scene    
     # Get the parsed last shape of the heatmap input
-#    parse_dim = train_obs_hpinput.shape[-1]
-    parse_dim = 512
+    parse_dim = 1280
     
-    # CONSTRUCT THREE LSTM ENCODERS TO ENCODE HEATMAP, OCCUPANCY GRID, AND TRAJECTORY INFORMATION IN PARALLEL   
-    
+    # CONSTRUCT THREE LSTM ENCODERS TO ENCODE HEATMAP, OCCUPANCY GRID, AND TRAJECTORY INFORMATION IN PARALLEL       
     # Construct the heatmap scene model
     # heatmap sence model for the observed data
     h_obs_in = Input(shape=(obs_seq, parse_dim), name='h_obs_in')
@@ -254,7 +222,7 @@ def main():
     # CHECK POINT AND SAVE THE BEST MODEL
     filepath="../models/cvae_mixed_%s_%0.f_%s.hdf5"%(dataname, epochs, timestr)
     ## ToDo, Eraly stop
-    earlystop = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=200)
+    earlystop = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=50)
     checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=0, save_best_only=True, mode='min')
     callbacks_list = [earlystop, checkpoint]
     
@@ -263,7 +231,7 @@ def main():
     # No mattter train_mode or retrain mode, the validation and test data are the same and they are loaded once the model is built.
     # For the 7030 tarining and test seting on the same set, the name of training (30%) and validation (70%) are swapped
     print('Load the validation data ...')    
-    V_ = np.load('../processed/%s_training_data_grid.npz'%dataname)
+    V_ = np.load('../processed/%s_validation_data_grid.npz'%dataname)
     val_obs, val_pred, val_raw, val_obs_og, val_pred_og, val_obs_hmaps, val_pred_hmaps = V_['obs'], V_['pred'], V_['raw'], V_['obs_og'], V_['pred_og'], V_['obs_hmaps'], V_['pred_hmaps']
     # Shift one time step for occupancy grid and scene attention                  
     val_obs_og = val_obs_og[:, 1:, :]
@@ -288,23 +256,37 @@ def main():
     # Construct the heatmap/scene inputs for the model
     # Please note that during training and validation, in order to calculate latent z, y (ground truth prediction) is visiable
     # y (ground truth prediction) is not available in testing
-    val_obs_hpinput = parse_hmap(val_obs_hmaps, hmap_model, obs_seq)
-    val_pred_hpinput = parse_hmap(val_pred_hmaps, hmap_model, pred_seq) 
+    val_obs_hpinput = resnet(val_obs_hmaps, obs_seq)
+    val_pred_hpinput = resnet(val_pred_hmaps, pred_seq) 
     
     print('\nLoad the test data ...')  
-    test = np.load('../processed/%s_training_data_grid.npz'%dataname)
-    test_obs, test_pred, test_raw, test_obs_og, test_obs_hmaps = test['obs'], test['pred'], test['raw'], test['obs_og'], test['obs_hmaps']
-    # Shift one time step for occupancy grid and scene attention 
-    test_obs_og = test_obs_og[:, 1:, :]
-    test_obs_hmaps = test_obs_hmaps[:, 1:, ...]       
-    # Get the residual of the trajectories        
-    test_traj = np.concatenate((test_obs[:, :, 2:4], test_pred[:, :, 2:4]), axis=1)
-    test_traj_r = test_traj[:, 1:, :] - test_traj[:, :-1, :]
-    test_traj_r = test_traj_r*resi_scale
-    test_obs_r = test_traj_r[:, :obs_seq, :]            
-    ## Get User type one-hot encoding            
-    test_obs_type = get_type(test_obs, 3, isObservation=True)
-    test_obs_r = np.concatenate((test_obs_r, test_obs_type), axis=-1)                   
+# =============================================================================
+#     test = np.load('../processed/%s_validation_data_grid.npz'%dataname)
+#     test_obs, test_pred, test_raw, test_obs_og, test_obs_hmaps = test['obs'], test['pred'], test['raw'], test['obs_og'], test['obs_hmaps']
+#     # Shift one time step for occupancy grid and scene attention 
+#     test_obs_og = test_obs_og[:, 1:, :]
+#     test_obs_hmaps = test_obs_hmaps[:, 1:, ...]       
+#     # Get the residual of the trajectories        
+#     test_traj = np.concatenate((test_obs[:, :, 2:4], test_pred[:, :, 2:4]), axis=1)
+#     test_traj_r = test_traj[:, 1:, :] - test_traj[:, :-1, :]
+#     test_traj_r = test_traj_r*resi_scale
+#     test_obs_r = test_traj_r[:, :obs_seq, :]            
+#     ## Get User type one-hot encoding            
+#     test_obs_type = get_type(test_obs, 3, isObservation=True)
+#     test_obs_r = np.concatenate((test_obs_r, test_obs_type), axis=-1) 
+# =============================================================================
+    test_raw = val_raw
+    test_obs = val_obs
+    test_pred = val_pred
+    test_obs_r = val_obs_r
+#    test_pred_r = val_pred_r
+    test_obs_og = val_obs_og
+#    test_pred_og = val_pred_og
+    test_obs_hmaps = val_obs_hmaps
+#    test_pred_hmaps = val_pred_hmaps
+    test_obs_hpinput = val_obs_hpinput
+#    test_pred_hpinput = val_pred_hpinput
+                  
     # Double check the data shape
     # Here is the testing related data
     print('the shape of test_obs', test_obs_r.shape)   
@@ -314,13 +296,15 @@ def main():
     # Construct the heatmap/scene inputs for the model
     # Please note that during training and validation, in order to calculate latent z, y (ground truth prediction) is visiable
     # y (ground truth prediction) is not available in testing
-    test_obs_hpinput = parse_hmap(test_obs_hmaps, hmap_model, obs_seq)
+    test_obs_hpinput = resnet(test_obs_hmaps, obs_seq)
+    
+    
     
 
     #################### START TRAINING THE CVAE MODEL ####################
     if train_mode:
         print("\nload the training data")
-        T_ = np.load('../processed/%s_validation_data_grid.npz'%dataname)
+        T_ = np.load('../processed/%s_training_data_grid.npz'%dataname)
         train_obs, train_pred, train_obs_og, train_pred_og, train_obs_hmaps, train_pred_hmaps = T_['obs'], T_['pred'], T_['obs_og'], T_['pred_og'], T_['obs_hmaps'], T_['pred_hmaps']
         print('You are using the scene context from %s'%sceneType)
         print('Data loaded!')        
@@ -347,8 +331,13 @@ def main():
         # Construct the heatmap/scene inputs for the model
         # Please note that during training and validation, in order to calculate latent z, y (ground truth prediction) is visiable
         # y (ground truth prediction) is not available in testing
-        train_obs_hpinput = parse_hmap(train_obs_hmaps, hmap_model, obs_seq)
-        train_pred_hpinput = parse_hmap(train_pred_hmaps, hmap_model, pred_seq)
+# =============================================================================
+#         train_obs_hpinput = parse_hmap(train_obs_hmaps, hmap_model, obs_seq)
+#         train_pred_hpinput = parse_hmap(train_pred_hmaps, hmap_model, pred_seq)
+# =============================================================================
+        train_obs_hpinput = resnet(train_obs_hmaps, obs_seq)
+        train_pred_hpinput = resnet(train_pred_hmaps, pred_seq)
+        
         
         print('Start training the CVAE model...')
         history = cvae.fit(x=[train_obs_hpinput, train_pred_hpinput, train_obs_og, train_pred_og, train_obs_r, train_pred_r],
@@ -479,27 +468,24 @@ def main():
         for arg in vars(args):
             params = ('%s = %s'%(str(arg), str(getattr(args, arg))))
             f.writelines(params)
-            f.writelines('\n')
+            f.writelines('\n')    
+
+
+def resnet(hmaps, seq):
+    '''
+    This is function to use ResNet50
+    '''
+    model = MobileNetV2(weights='imagenet', include_top=False, pooling='avg')
+
+    output = []
+    for u, user in enumerate(hmaps):
+        for s, step in enumerate(user):
+            hmap_input = np.expand_dims(step, axis=0)
+            hmap_parsed = model.predict(hmap_input)
+            output.append(hmap_parsed)
+    output = np.reshape(output, [hmaps.shape[0], seq, -1])
+    return output 
     
-    
-# CNN model for scene/heatmap parsing
-def CNN(img_rows, img_cols, img_channels, o_dim):
-    model = Sequential()
-    img_shape = (img_rows, img_cols, img_channels)
-    model.add(Conv2D(96, kernel_size=8, strides=2, input_shape=img_shape, padding="same"))
-    model.add(Dropout(0.5))
-    model.add(MaxPooling2D(pool_size=(3, 3), strides=2))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Conv2D(256, kernel_size=4, strides=2, padding="same"))
-    model.add(Dropout(0.5))
-    model.add(MaxPooling2D(pool_size=(3, 3), strides=2))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Conv2D(o_dim, kernel_size=4, strides=2, padding="same"))
-    model.add(MaxPooling2D(pool_size=(3, 3), strides=2))
-    model.add(Dropout(0.5))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Flatten())
-    return model
 
 
 def parse_hmap(hmaps, hmap_model, seq):
