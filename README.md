@@ -22,10 +22,9 @@ python mcenet.py
 ## Citation
 ```
 @misc{cheng2020context,
-    title={Context Conditional Variational Autoencoder for Predicting Multi-Path Trajectories in Mixed Traffic},
+    title={MCENET: Multi-Context Encoder Network for Homogeneous Agent Trajectory Prediction in Mixed Traffic},
     author={Hao Cheng and Wentong Liao and Michael Ying Yang and Monika Sester and Bodo Rosenhahn},
     year={2020},
-    eprint={2002.05966},
     archivePrefix={arXiv},
     primaryClass={cs.CV}
 }
