@@ -42,11 +42,11 @@ def parse_args(data_name):
 	
 	
     # Hyperparameters for the dataset
-    datanames = ['HBS', 'HC', 'SDDgates3']
-    parser.add_argument('--data_name', type=str, choices=datanames, default='HBS', help='specify the input data name')
+#    datanames = ['HBS', 'HC', 'SDDgates3']
+#    parser.add_argument('--data_name', type=str, choices=datanames, default='HBS', help='specify the input data name')
     parser.add_argument('--ratios', type=float, default=[0.3, 1.0], help='This is the ratios for data partition')
     parser.add_argument('--num_pred', type=int, default=10, help='This is the number of predictions for each agent')
-    parser.add_argument('--data_process', type=bool, default=True, help='This is the flag for data partitioning')
+    parser.add_argument('--data_process', type=bool, default=False, help='This is the flag for data partitioning')
     parser.add_argument('--leaveoneout', type=bool, default=False, help='Whether process data using leave-one-out policy')
     parser.add_argument('--num_units', type=int, default=128, help='Number of GRU units for x or y input encoder')
     parser.add_argument('--obs_seq', type=int, default=8, help='Number of time steps observed')

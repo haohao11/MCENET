@@ -14,8 +14,8 @@ from contextlib import redirect_stdout
 import numpy as np
 import os
 
-from keras.layers import Input, Dense, Lambda, concatenate, LSTM, Activation 
-from keras.layers.convolutional import Conv1D
+from keras.layers import Input, Dense, Lambda, concatenate, LSTM, Activation, Flatten, BatchNormalization
+from keras.layers.convolutional import Conv1D, Conv2D, MaxPooling2D
 from keras.models import Model
 from keras import backend as K
 from keras.layers.core import RepeatVector, Dropout
@@ -91,26 +91,28 @@ def main():
     #################### MODEL CONSTRUCTION STARTS FROM HERE ####################
     # Define the ResNet for scene    
     # Get the parsed last shape of the heatmap input
-    parse_dim = 1280
+    parse_dim = 1280 # The output dimension of MobileNet
+    # Please note that here you can also train the feacture using the CNN from scratch
+    
     
     # CONSTRUCT THREE LSTM ENCODERS TO ENCODE HEATMAP, OCCUPANCY GRID, AND TRAJECTORY INFORMATION IN PARALLEL       
     # Construct the heatmap scene model
-    # heatmap sence model for the observed data
-    h_obs_in = Input(shape=(obs_seq, parse_dim), name='h_obs_in')
-    h_obs_out = LSTM(hidden_size,
+    # Sence model for the observed data
+    s_obs_in = Input(shape=(obs_seq, parse_dim), name='s_obs_in')
+    s_obs_out = LSTM(hidden_size,
                      return_sequences=False,
                      stateful=False,
                      dropout=h_drop,
-                     name='h_obs_out')(h_obs_in)
-    h_obs_Model = Model(h_obs_in, h_obs_out)
-    h_obs_Model.summary()        
-    # heatmap scene model for the conditioned data
-    h_pred_in = Input(shape=(pred_seq, parse_dim), name='h_pred_in')
-    h_pred_out = LSTM(hidden_size,
+                     name='h_obs_out')(s_obs_in)
+    s_obs_Model = Model(s_obs_in, s_obs_out)
+    s_obs_Model.summary()        
+    # scene model for the conditioned data
+    s_pred_in = Input(shape=(pred_seq, parse_dim), name='s_pred_in')
+    s_pred_out = LSTM(hidden_size,
                       return_sequences=False,
                       stateful=False,
                       dropout=h_drop,
-                      name='h_pred_out')(h_pred_in)
+                      name='s_pred_out')(s_pred_in)
         
     # Construct the occupancy grid model
     # occupancy grid model for the observed data
@@ -145,7 +147,7 @@ def main():
                    dropout=s_drop,
                    name='x_state')(x_dense) # (1, 64)
     # encoded x
-    x_endoced = concatenate([x_state, h_obs_out, o_obs_out], name='x_endoced')
+    x_endoced = concatenate([x_state, s_obs_out, o_obs_out], name='x_endoced')
     x_encoded_dense = Dense(encoder_dim, activation='relu', name='x_encoded_dense')(x_endoced)
     
     # sequence model for the conditioned model    
@@ -159,7 +161,7 @@ def main():
                    dropout=s_drop,
                    name='y_state')(y_dense) # (1, 64)
     # encoded y
-    y_encoded = concatenate([y_state, h_pred_out, o_pred_out], name='y_encoded')
+    y_encoded = concatenate([y_state, s_pred_out, o_pred_out], name='y_encoded')
     y_encoded_dense = Dense(encoder_dim, activation='relu', name='y_encoded_dense')(y_encoded)
         
     # CONSTRUCT THE CVAE ENCODER BY FEEDING THE CONCATENATED ENCODED HEATMAP, OCCUPANCY GRID, AND TRAJECTORY INFORMATION
@@ -214,7 +216,7 @@ def main():
 
                 
     # BUILD THE CVAE MODEL
-    cvae = Model([h_obs_in, h_pred_in, o_obs_in, o_pred_in, x, y], [y_prime])
+    cvae = Model([s_obs_in, s_pred_in, o_obs_in, o_pred_in, x, y], [y_prime])
     opt = optimizers.Adam(lr=lr, beta_1=0.9, beta_2=0.999, decay=0.0, amsgrad=False)
     cvae.compile(optimizer=opt, loss=vae_loss)
     cvae.summary()
@@ -356,13 +358,13 @@ def main():
         print("\nLoad the trained model")
         if args.sceneType == 'heatmap':
             print("The scene context is heatmap")
-            trained_model = "../trained_model/hm_gp_8_8_models/cvae_mixed_HC_10000_20191223-214916.hdf5"
+            trained_model = "../trained_model/....hdf5"
         elif args.sceneType == "aerial_photograph":
             print("The scene context is aerial photograph")
-            trained_model = "../trained_model/ap_gp_8_8_models/cvae_mixed_HC_10000_20191224-102920.hdf5"            
+            trained_model = "../trained_model/....hdf5"            
         elif args.sceneType == 'segmented_map':            
             print("The scene context is segmented map")
-            trained_model = "../trained_model/sm_gp_8_8_models/cvae_mixed_HC_10000_20191224-112444.hdf5"            
+            trained_model = "../trained_model/....hdf5"            
         cvae.load_weights(trained_model)
         
     
@@ -373,7 +375,7 @@ def main():
     print('Start testing...')
     print('Construct the CVAE encoder')
         
-    x_encoder = Model([h_obs_in, o_obs_in, x], x_encoded_dense)
+    x_encoder = Model([s_obs_in, o_obs_in, x], x_encoded_dense)
     x_encoder.summary()
     # get the x_encoded_dense as latent feature for prediction
     x_latent = x_encoder.predict([test_obs_hpinput, test_obs_og, test_obs_r], batch_size=batch_size)
@@ -393,9 +395,9 @@ def main():
     # Save the summary of the model
     with open('../models/cvae_mixed_%s_model_summary_%s.txt'%(dataname, timestr), 'w') as f:
         with redirect_stdout(f):
-            h_obs_Model.summary()
-            o_obs_Model.summary()
-            o_pred_Model.summary()
+#            s_obs_Model.summary()
+#            o_obs_Model.summary()
+#            o_pred_Model.summary()
             cvae.summary()
             x_encoder.summary()
             generator.summary() 
@@ -467,20 +469,37 @@ def main():
             f.writelines('\n')    
 
 
-def mobilenet(hmaps, seq):
+def mobilenet(scenes, seq):
     '''
     This is function to use ResNet50
     '''
     model = MobileNetV2(weights='imagenet', include_top=False, pooling='avg')
-
-    output = []
-    for u, user in enumerate(hmaps):
-        for s, step in enumerate(user):
-            hmap_input = np.expand_dims(step, axis=0)
-            hmap_parsed = model.predict(hmap_input)
-            output.append(hmap_parsed)
-    output = np.reshape(output, [hmaps.shape[0], seq, -1])
+    num_seq = scenes.shape[0]
+    scenes_r = scenes.reshape(-1, scenes.shape[-3], scenes.shape[-2], scenes.shape[-1])
+    output = model.predict(scenes_r)
+    output = np.reshape(output, [num_seq, seq, -1])        
     return output 
+
+
+def CNN(seq, scene_dim, h_drop):
+    # (1)Construct CNN model
+    s_in = Input(shape=scene_dim, name='s_in')
+    s_Conv1 = Conv2D(4, kernel_size=3, strides=2, padding='same', activation='relu', name='s_Conv1')(s_in)
+    s_Conv2 = Conv2D(8, kernel_size=3, strides=2, padding='same', activation='relu', name='s_Conv2')(s_Conv1)
+    s_Conv3 = Conv2D(16, kernel_size=8, strides=2, padding='same', activation='relu', name='s_Conv3')(s_Conv2)
+    s_DP = Dropout(h_drop, name='s_DP')(s_Conv3)
+    s_MP = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same', name='s_MP3')(s_DP)
+    s_feature_map = BatchNormalization(momentum=0.8, name='s_feature_map')(s_MP)
+    s_out = Flatten()(s_feature_map)
+    CNN_model = Model(s_in, s_out)
+    
+    ss_in = Input(shape=(seq, scene_dim[0], scene_dim[1], scene_dim[2]), name='ss_in')
+    ss_out = TimeDistributed(CNN_model)(ss_in)
+    
+    
+
+    
+
     
 
 
