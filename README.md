@@ -8,14 +8,10 @@ Predicting the future trajectory (d) by observing the past trajectories (c) cons
 ## Code usage
 Install required packages, see [requirements.txt](https://github.com/haohao11/CCVAE/blob/master/requirements.txt)
 
-generate data
-```python
-python dparser.py
-```
 
-Train the model
+Set the *data_process* as *True* and Train the model
 ```python
-python ccvae_mixed.py
+python mcenet.py
 ```
 
 ## Download preprocessed data and pretrained model
