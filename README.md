@@ -14,11 +14,6 @@ Set the *data_process* as *True* and Train the model
 python mcenet.py
 ```
 
-## Download preprocessed data and pretrained model
-[Download preprocessed data](https://www.dropbox.com/sh/minfdvk167912pq/AAC-8O38SJSEz4R6UE8xtGNKa?dl=0)
-
-
-
 ## Citation
 ```
 @misc{cheng2020context,
