@@ -127,13 +127,12 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
     This is the function to load data
     return:
         training: train_obs, train_pred, train_raw, train_occuGrid, train_hmaps
-        validation: val_obs, val_pred, val_raw, val_occuGrid, val_hmaps
         test: test_obs, test_pred, test_raw, test_occuGrid, test_hmaps
     '''
     
     # Store the directories for the data
     train_dir = dirs[1]
-    val_dir = dirs[2]
+    test_dir = dirs[2]
     
     # Store the scale for normalization
     scale = args.scale
@@ -148,8 +147,8 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
     
     
     ## Validation data
-    val_data = normalize(preprocess(val_dir, filename), scale)
-    val_obs, val_pred, val_raw = get_traj_like(val_data, args.obs_seq, args.pred_seq, normalized_to_meter)
+    test_data = normalize(preprocess(test_dir, filename), scale)
+    test_obs, test_pred, test_raw = get_traj_like(test_data, args.obs_seq, args.pred_seq, normalized_to_meter)
     
         
     # Compute the occupancy grid
@@ -167,18 +166,18 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
                                               train_raw,
                                               args)
     
-    # Compute the occupancy grid for validation data
-    val_obs_og = circle_group_model_input(val_obs[:, :, 0:4],
+    # Compute the occupancy grid for test data
+    test_obs_og = circle_group_model_input(test_obs[:, :, 0:4],
                                             args.neighSize,
                                             args.gridRadius,
                                             args.gridAngle,
-                                            val_raw,
+                                            test_raw,
                                             args)
-    val_pred_og = circle_group_model_input(val_pred[:, :, 0:4],
+    test_pred_og = circle_group_model_input(test_pred[:, :, 0:4],
                                             args.neighSize,
                                             args.gridRadius,
                                             args.gridAngle,
-                                            val_raw,
+                                            test_raw,
                                             args)
 
     
@@ -188,7 +187,7 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
         # each layer a different user type
         # TODO, this need to be changed to only use training data to get the heatmap for a strict unseen for validation
         if trict_untouched == False:
-            all_data = np.concatenate((np.reshape(train_data, [-1, 5]), np.reshape(val_data, [-1, 5])), axis=0)
+            all_data = np.concatenate((np.reshape(train_data, [-1, 5]), np.reshape(test_data, [-1, 5])), axis=0)
         else:
             all_data = np.reshape(train_data, [-1, 5])
         print('shape for all_data', all_data.shape)
@@ -202,10 +201,10 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
         train_pred_hmap = ind_heatmap(train_pred, heatmaps, scale, hgrid_size=args.hgrid_size)
         train_pred_hmaps = repeat(train_pred_hmap, 3)    
         ## Compute the heatmap grid for validation data
-        val_obs_hmap = ind_heatmap(val_obs, heatmaps, scale, hgrid_size=args.hgrid_size)
-        val_obs_hmaps = repeat(val_obs_hmap, 3)
-        val_pred_hmap = ind_heatmap(val_pred, heatmaps, scale, hgrid_size=args.hgrid_size)
-        val_pred_hmaps = repeat(val_pred_hmap, 3)
+        test_obs_hmap = ind_heatmap(test_obs, heatmaps, scale, hgrid_size=args.hgrid_size)
+        test_obs_hmaps = repeat(test_obs_hmap, 3)
+        test_pred_hmap = ind_heatmap(test_pred, heatmaps, scale, hgrid_size=args.hgrid_size)
+        test_pred_hmaps = repeat(test_pred_hmap, 3)
 
     elif background == 'segmented_map':
         print("The scene context is segmented map")
@@ -214,8 +213,8 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
         train_obs_hmaps = ind_image(train_obs, images, scale, hgrid_size=args.hgrid_size)
         train_pred_hmaps = ind_image(train_pred, images, scale, hgrid_size=args.hgrid_size)
         ## Compute the heatmap grid for validation data
-        val_obs_hmaps = ind_image(val_obs, images, scale, hgrid_size=args.hgrid_size)
-        val_pred_hmaps = ind_image(val_pred, images, scale, hgrid_size=args.hgrid_size)
+        test_obs_hmaps = ind_image(test_obs, images, scale, hgrid_size=args.hgrid_size)
+        test_pred_hmaps = ind_image(test_pred, images, scale, hgrid_size=args.hgrid_size)
 
     elif background == 'aerial_photograph':
         print("The scene context is aerial photograph")
@@ -224,17 +223,17 @@ def dataLoader(dirs, filename, args, dataname, background = 'heatmap', trict_unt
         train_obs_hmaps = rgb_image(train_obs, image, scale, hgrid_size=args.hgrid_size)
         train_pred_hmaps = rgb_image(train_pred, image, scale, hgrid_size=args.hgrid_size)
         ## Compute the heatmap grid for validation data
-        val_obs_hmaps = rgb_image(val_obs, image, scale, hgrid_size=args.hgrid_size)
-        val_pred_hmaps = rgb_image(val_pred, image, scale, hgrid_size=args.hgrid_size)
+        test_obs_hmaps = rgb_image(test_obs, image, scale, hgrid_size=args.hgrid_size)
+        test_pred_hmaps = rgb_image(test_pred, image, scale, hgrid_size=args.hgrid_size)
     
     # Return the data
     training = [train_obs, train_pred, train_raw, train_obs_og, train_pred_og, train_obs_hmaps, train_pred_hmaps]
-    validation = [val_obs, val_pred, val_raw, val_obs_og, val_pred_og, val_obs_hmaps, val_pred_hmaps]	
+    test = [test_obs, test_pred, test_raw, test_obs_og, test_pred_og, test_obs_hmaps, test_pred_hmaps]	
     training_data_name = '../processed/%s_training_data_grid.npz'%dataname
-    validation_data_name = '../processed/%s_validation_data_grid.npz'%dataname
+    test_data_name = '../processed/%s_test_data_grid.npz'%dataname
     save_data(training_data_name, training)
-    save_data(validation_data_name, validation) 
-    return training, validation
+    save_data(test_data_name, test) 
+    return training, test
 
 
 def repeat(data, times):
