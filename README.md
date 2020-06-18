@@ -11,7 +11,7 @@ Install required packages, see [requirements.txt](https://github.com/haohao11/CC
 
 Set the *data_process* as *True* and Train the model
 ```python
-python mcenet.py
+python trainer.py
 ```
 
 ## Citation
