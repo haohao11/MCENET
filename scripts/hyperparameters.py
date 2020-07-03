@@ -10,8 +10,8 @@ import argparse
 
 
 def parse_args(data_name):
-    # desc = "Tensorflow implementation of RNN GRU for trajectory prediction"
-    # parser = argparse.ArgumentParser(description=desc)
+    desc = "Tensorflow/keras implementation of RNN LSTM for trajectory prediction"
+    parser = argparse.ArgumentParser(description=desc)
     
     # Define the distance threshold for DBSCAN
     meter = 1.5
